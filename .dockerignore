@@ -1,0 +1,8 @@
+*
+
+!/cmd/pr-assignment/
+!/internal/
+!/openapi/openapi.yaml
+!/openapi/spec.go
+!go.mod
+!go.sum

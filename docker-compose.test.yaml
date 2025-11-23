@@ -1,0 +1,39 @@
+services:
+  app_test:
+    build: .
+    container_name: pr-assignment-app-test
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+    env_file:
+      - .env.test
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 2s
+    networks:
+      - test
+
+  postgres_test:
+    image: postgres:18.1-alpine3.22
+    container_name: pr-assignment-db-test
+    env_file:
+      - .env.test
+    volumes:
+      - ./deployments/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 2s
+    networks:
+      - test
+
+networks:
+  test:
+    driver: bridge

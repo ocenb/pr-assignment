@@ -1,0 +1,667 @@
+openapi: 3.0.3
+info:
+  title: PR Reviewer Assignment Service (Test Task, Fall 2025)
+  version: "1.0.0"
+
+tags:
+  - name: Teams
+  - name: Users
+  - name: PullRequests
+  - name: Health
+  - name: Stats
+
+components:
+  parameters:
+    TeamNameQuery:
+      name: team_name
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 3
+        maxLength: 50
+      description: Уникальное имя команды
+    UserIdQuery:
+      name: user_id
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Идентификатор пользователя
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - TEAM_EXISTS
+                - PR_EXISTS
+                - PR_MERGED
+                - NOT_ASSIGNED
+                - NO_CANDIDATE
+                - NOT_FOUND
+                - INVALID_INPUT
+                - INTERNAL_ERROR
+            message:
+              type: string
+      example:
+        error:
+          code: NOT_FOUND
+          message: resource not found
+    TeamMember:
+      type: object
+      required: [user_id, username, is_active]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        is_active:
+          type: boolean
+    Team:
+      type: object
+      required: [team_name, members]
+      properties:
+        team_name:
+          type: string
+          minLength: 3
+          maxLength: 50
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+    User:
+      type: object
+      required: [user_id, username, team_name, is_active]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        team_name:
+          type: string
+          minLength: 3
+          maxLength: 50
+        is_active:
+          type: boolean
+    PullRequest:
+      type: object
+      required:
+        [
+          pull_request_id,
+          pull_request_name,
+          author_id,
+          status,
+          assigned_reviewers,
+        ]
+      properties:
+        pull_request_id:
+          type: string
+          format: uuid
+        pull_request_name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        author_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [OPEN, MERGED]
+        assigned_reviewers:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: user_id назначенных ревьюверов (0..2)
+        createdAt:
+          type: string
+          format: date-time
+          nullable: true
+        mergedAt:
+          type: string
+          format: date-time
+          nullable: true
+    PullRequestShort:
+      type: object
+      required: [pull_request_id, pull_request_name, author_id, status]
+      properties:
+        pull_request_id:
+          type: string
+          format: uuid
+        pull_request_name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        author_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [OPEN, MERGED]
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: CheckHealth
+      summary: Проверка состояния сервиса
+      responses:
+        "200":
+          description: Сервис работает нормально
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /team/add:
+    post:
+      tags: [Teams]
+      operationId: CreateTeam
+      summary: Создать команду с участниками (создаёт/обновляет пользователей)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Team"
+            example:
+              team_name: payments
+              members:
+                - user_id: 550e8400-e29b-41d4-a716-446655440000
+                  username: Alice
+                  is_active: true
+                - user_id: 660e8400-e29b-41d4-a716-446655440001
+                  username: Bob
+                  is_active: true
+      responses:
+        "201":
+          description: Команда создана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  team:
+                    $ref: "#/components/schemas/Team"
+              example:
+                team:
+                  team_name: backend
+                  members:
+                    - user_id: 550e8400-e29b-41d4-a716-446655440000
+                      username: Alice
+                      is_active: true
+                    - user_id: 660e8400-e29b-41d4-a716-446655440001
+                      username: Bob
+                      is_active: true
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Команда уже существует или некорректные данные
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error:
+                  code: TEAM_EXISTS
+                  message: team_name already exists
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /team/get:
+    get:
+      tags: [Teams]
+      operationId: GetTeam
+      summary: Получить команду с участниками
+      parameters:
+        - $ref: "#/components/parameters/TeamNameQuery"
+      responses:
+        "200":
+          description: Объект команды
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+              example:
+                team_name: backend
+                members:
+                  - user_id: 550e8400-e29b-41d4-a716-446655440000
+                    username: Alice
+                    is_active: true
+                  - user_id: 660e8400-e29b-41d4-a716-446655440001
+                    username: Bob
+                    is_active: true
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Команда не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /users/setIsActive:
+    post:
+      tags: [Users]
+      operationId: SetUserActive
+      summary: Установить флаг активности пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, is_active]
+              properties:
+                user_id:
+                  type: string
+                  format: uuid
+                is_active:
+                  type: boolean
+            example:
+              user_id: 660e8400-e29b-41d4-a716-446655440001
+              is_active: false
+      responses:
+        "200":
+          description: Обновлённый пользователь
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+              example:
+                user:
+                  user_id: 660e8400-e29b-41d4-a716-446655440001
+                  username: Bob
+                  team_name: backend
+                  is_active: false
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /pullRequest/create:
+    post:
+      tags: [PullRequests]
+      operationId: CreatePullRequest
+      summary: Создать PR и автоматически назначить до 2 ревьюверов из команды автора
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pull_request_id, pull_request_name, author_id]
+              properties:
+                pull_request_id: { type: string, format: uuid }
+                pull_request_name:
+                  { type: string, minLength: 3, maxLength: 255 }
+                author_id: { type: string, format: uuid }
+            example:
+              pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+              pull_request_name: Add search
+              author_id: 550e8400-e29b-41d4-a716-446655440000
+      responses:
+        "201":
+          description: PR создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pr:
+                    $ref: "#/components/schemas/PullRequest"
+              example:
+                pr:
+                  pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+                  pull_request_name: Add search
+                  author_id: 550e8400-e29b-41d4-a716-446655440000
+                  status: OPEN
+                  assigned_reviewers: [660e8400-e29b-41d4-a716-446655440001]
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Автор/команда не найдены
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: PR уже существует
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: PR_EXISTS, message: PR id already exists }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /pullRequest/merge:
+    post:
+      tags: [PullRequests]
+      operationId: MergePullRequest
+      summary: Пометить PR как MERGED (идемпотентная операция)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pull_request_id]
+              properties:
+                pull_request_id: { type: string, format: uuid }
+            example:
+              pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+      responses:
+        "200":
+          description: PR в состоянии MERGED
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pr:
+                    $ref: "#/components/schemas/PullRequest"
+              example:
+                pr:
+                  pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+                  pull_request_name: Add search
+                  author_id: 550e8400-e29b-41d4-a716-446655440000
+                  status: MERGED
+                  assigned_reviewers: [660e8400-e29b-41d4-a716-446655440001]
+                  mergedAt: 2025-10-24T12:34:56Z
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: PR не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /pullRequest/reassign:
+    post:
+      tags: [PullRequests]
+      operationId: ReassignReviewer
+      summary: Переназначить конкретного ревьювера на другого из его команды
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pull_request_id, old_user_id]
+              properties:
+                pull_request_id: { type: string, format: uuid }
+                old_user_id: { type: string, format: uuid }
+            example:
+              pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+              old_user_id: 660e8400-e29b-41d4-a716-446655440001
+      responses:
+        "200":
+          description: Переназначение выполнено
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pr, replaced_by]
+                properties:
+                  pr:
+                    $ref: "#/components/schemas/PullRequest"
+                  replaced_by:
+                    type: string
+                    format: uuid
+                    description: user_id нового ревьювера
+              example:
+                pr:
+                  pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+                  pull_request_name: Add search
+                  author_id: 550e8400-e29b-41d4-a716-446655440000
+                  status: OPEN
+                  assigned_reviewers: [880e8400-e29b-41d4-a716-446655440003]
+                replaced_by: 880e8400-e29b-41d4-a716-446655440003
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: PR или пользователь не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Нарушение доменных правил переназначения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                merged:
+                  summary: Нельзя менять после MERGED
+                  value:
+                    error:
+                      { code: PR_MERGED, message: cannot reassign on merged PR }
+                notAssigned:
+                  summary: Пользователь не был назначен ревьювером
+                  value:
+                    error:
+                      {
+                        code: NOT_ASSIGNED,
+                        message: reviewer is not assigned to this PR,
+                      }
+                noCandidate:
+                  summary: Нет доступных кандидатов
+                  value:
+                    error:
+                      {
+                        code: NO_CANDIDATE,
+                        message: no active replacement candidate in team,
+                      }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /users/getReview:
+    get:
+      tags: [Users]
+      operationId: GetUserReviews
+      summary: Получить PR'ы, где пользователь назначен ревьювером
+      parameters:
+        - $ref: "#/components/parameters/UserIdQuery"
+      responses:
+        "200":
+          description: Список PR'ов пользователя
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id, pull_requests]
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  pull_requests:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PullRequestShort"
+              example:
+                user_id: 660e8400-e29b-41d4-a716-446655440001
+                pull_requests:
+                  - pull_request_id: 770e8400-e29b-41d4-a716-446655440002
+                    pull_request_name: Add search
+                    author_id: 550e8400-e29b-41d4-a716-446655440000
+                    status: OPEN
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /stats/assignments:
+    get:
+      tags: [Stats]
+      operationId: GetAssignmentStats
+      summary: Получить статистику назначений по пользователям и PR
+      responses:
+        "200":
+          description: Статистика назначений
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_stats, pr_stats]
+                properties:
+                  user_stats:
+                    type: array
+                    items:
+                      type: object
+                      required: [user_id, username, assignment_count]
+                      properties:
+                        user_id:
+                          type: string
+                          format: uuid
+                        username:
+                          type: string
+                        assignment_count:
+                          type: integer
+                  pr_stats:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [pull_request_id, pull_request_name, reviewer_count]
+                      properties:
+                        pull_request_id:
+                          type: string
+                          format: uuid
+                        pull_request_name:
+                          type: string
+                        reviewer_count:
+                          type: integer
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /team/deactivate:
+    post:
+      tags: [Teams]
+      operationId: DeactivateTeamMembers
+      summary: Массовая деактивация пользователей команды с удалением из открытых PR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [team_name]
+              properties:
+                team_name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+            example:
+              team_name: backend
+      responses:
+        "200":
+          description: Пользователи деактивированы
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deactivated_count, removed_count]
+                properties:
+                  deactivated_count:
+                    type: integer
+                    description: Количество деактивированных пользователей
+                  removed_count:
+                    type: integer
+                    description: Количество удаленных ревьюверов из открытых PR
+              example:
+                deactivated_count: 5
+                removed_count: 3
+        "400":
+          description: Некорректные данные запроса
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Команда не найдена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
