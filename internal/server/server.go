@@ -43,10 +43,10 @@ func New(log *slog.Logger, cfg *config.Config, handler api.Handler) (*HttpServer
 	mux.Handle("/", server)
 
 	var h http.Handler = mux
-	h = middleware.Recoverer(h)
 	h = middlewares.LoggingMiddleware(log, h)
 	h = middleware.RequestID(h)
 	h = middleware.RealIP(h)
+	h = middleware.Recoverer(h)
 
 	return &HttpServer{log: log, cfg: cfg, handler: h}, nil
 }
