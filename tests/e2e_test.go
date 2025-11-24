@@ -30,7 +30,7 @@ func TestE2E_FullFlow(t *testing.T) {
 	require.IsType(t, &api.CheckHealthOK{}, health)
 
 	// 3. Data Preparation
-	teamName := "team-" + uuid.New().String()
+	teamName := api.TeamName("team-" + uuid.New().String())
 	user1ID := uuid.New() // Author
 	user2ID := uuid.New() // Reviewer 1
 	user3ID := uuid.New() // Reviewer 2

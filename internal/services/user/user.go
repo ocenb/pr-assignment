@@ -14,7 +14,6 @@ import (
 )
 
 type UserRepo interface {
-	GetUserByID(ctx context.Context, userID uuid.UUID) (*api.User, error)
 	SetActive(ctx context.Context, userID uuid.UUID, isActive bool) (*api.User, error)
 	GetReviews(ctx context.Context, userID uuid.UUID) ([]api.PullRequestShort, error)
 }

@@ -5,19 +5,17 @@ package api
 import (
 	"net/http"
 
-	"github.com/go-faster/errors"
 	"github.com/google/uuid"
 	"github.com/ogen-go/ogen/conv"
 	"github.com/ogen-go/ogen/middleware"
 	"github.com/ogen-go/ogen/ogenerrors"
 	"github.com/ogen-go/ogen/uri"
-	"github.com/ogen-go/ogen/validate"
 )
 
 // GetTeamParams is parameters of GetTeam operation.
 type GetTeamParams struct {
 	// Уникальное имя команды.
-	TeamName string
+	TeamName TeamName
 }
 
 func unpackGetTeamParams(packed middleware.Parameters) (params GetTeamParams) {
@@ -26,7 +24,7 @@ func unpackGetTeamParams(packed middleware.Parameters) (params GetTeamParams) {
 			Name: "team_name",
 			In:   "query",
 		}
-		params.TeamName = packed[key].(string)
+		params.TeamName = packed[key].(TeamName)
 	}
 	return params
 }
@@ -43,32 +41,31 @@ func decodeGetTeamParams(args [0]string, argsEscaped bool, r *http.Request) (par
 
 		if err := q.HasParam(cfg); err == nil {
 			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
-				val, err := d.DecodeValue()
-				if err != nil {
+				var paramsDotTeamNameVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotTeamNameVal = c
+					return nil
+				}(); err != nil {
 					return err
 				}
-
-				c, err := conv.ToString(val)
-				if err != nil {
-					return err
-				}
-
-				params.TeamName = c
+				params.TeamName = TeamName(paramsDotTeamNameVal)
 				return nil
 			}); err != nil {
 				return err
 			}
 			if err := func() error {
-				if err := (validate.String{
-					MinLength:    3,
-					MinLengthSet: true,
-					MaxLength:    50,
-					MaxLengthSet: true,
-					Email:        false,
-					Hostname:     false,
-					Regex:        nil,
-				}).Validate(string(params.TeamName)); err != nil {
-					return errors.Wrap(err, "string")
+				if err := params.TeamName.Validate(); err != nil {
+					return err
 				}
 				return nil
 			}(); err != nil {

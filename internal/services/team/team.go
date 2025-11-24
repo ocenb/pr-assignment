@@ -40,10 +40,10 @@ func New(log *slog.Logger, teamRepo TeamRepo, prRepo PRRepo, tm *transactor.Mana
 func (s *Service) Get(ctx context.Context, params api.GetTeamParams) (api.GetTeamRes, error) {
 	log := s.log.With(
 		logattr.Op("TeamService.Get"),
-		slog.String("team_name", params.TeamName),
+		slog.String("team_name", string(params.TeamName)),
 	)
 
-	team, err := s.teamRepo.Get(ctx, params.TeamName)
+	team, err := s.teamRepo.Get(ctx, string(params.TeamName))
 	if err != nil {
 		if errors.Is(err, errs.ErrTeamNotFound) {
 			return &api.GetTeamNotFound{
@@ -64,7 +64,7 @@ func (s *Service) Get(ctx context.Context, params api.GetTeamParams) (api.GetTea
 }
 
 func (s *Service) Create(ctx context.Context, req *api.Team) (api.CreateTeamRes, error) {
-	log := s.log.With(logattr.Op("TeamService.Create"), slog.String("team_name", req.TeamName))
+	log := s.log.With(logattr.Op("TeamService.Create"), slog.String("team_name", string(req.TeamName)))
 
 	if err := s.tm.Run(ctx, func(ctxTX context.Context) error {
 		return s.teamRepo.Create(ctxTX, req)
@@ -92,19 +92,19 @@ func (s *Service) Create(ctx context.Context, req *api.Team) (api.CreateTeamRes,
 func (s *Service) DeactivateTeamMembers(ctx context.Context, req *api.DeactivateTeamMembersReq) (api.DeactivateTeamMembersRes, error) {
 	log := s.log.With(
 		logattr.Op("TeamService.DeactivateTeamMembers"),
-		slog.String("team_name", req.TeamName),
+		slog.String("team_name", string(req.TeamName)),
 	)
 
 	var deactivatedCount, removedCount int64
 
 	err := s.tm.Run(ctx, func(ctxTX context.Context) error {
 		var err error
-		deactivatedCount, err = s.teamRepo.DeactivateTeamMembers(ctxTX, req.TeamName)
+		deactivatedCount, err = s.teamRepo.DeactivateTeamMembers(ctxTX, string(req.TeamName))
 		if err != nil {
 			return err
 		}
 
-		removedCount, err = s.prRepo.RemoveTeamReviewersFromOpenPRs(ctxTX, req.TeamName)
+		removedCount, err = s.prRepo.RemoveTeamReviewersFromOpenPRs(ctxTX, string(req.TeamName))
 		if err != nil {
 			return err
 		}

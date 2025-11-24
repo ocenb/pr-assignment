@@ -59,9 +59,9 @@ type CreatePullRequestNotFound ErrorResponse
 func (*CreatePullRequestNotFound) createPullRequestRes() {}
 
 type CreatePullRequestReq struct {
-	PullRequestID   uuid.UUID `json:"pull_request_id"`
-	PullRequestName string    `json:"pull_request_name"`
-	AuthorID        uuid.UUID `json:"author_id"`
+	PullRequestID   uuid.UUID       `json:"pull_request_id"`
+	PullRequestName PullRequestName `json:"pull_request_name"`
+	AuthorID        uuid.UUID       `json:"author_id"`
 }
 
 // GetPullRequestID returns the value of PullRequestID.
@@ -70,7 +70,7 @@ func (s *CreatePullRequestReq) GetPullRequestID() uuid.UUID {
 }
 
 // GetPullRequestName returns the value of PullRequestName.
-func (s *CreatePullRequestReq) GetPullRequestName() string {
+func (s *CreatePullRequestReq) GetPullRequestName() PullRequestName {
 	return s.PullRequestName
 }
 
@@ -85,7 +85,7 @@ func (s *CreatePullRequestReq) SetPullRequestID(val uuid.UUID) {
 }
 
 // SetPullRequestName sets the value of PullRequestName.
-func (s *CreatePullRequestReq) SetPullRequestName(val string) {
+func (s *CreatePullRequestReq) SetPullRequestName(val PullRequestName) {
 	s.PullRequestName = val
 }
 
@@ -164,16 +164,16 @@ func (s *DeactivateTeamMembersOK) SetRemovedCount(val int) {
 func (*DeactivateTeamMembersOK) deactivateTeamMembersRes() {}
 
 type DeactivateTeamMembersReq struct {
-	TeamName string `json:"team_name"`
+	TeamName TeamName `json:"team_name"`
 }
 
 // GetTeamName returns the value of TeamName.
-func (s *DeactivateTeamMembersReq) GetTeamName() string {
+func (s *DeactivateTeamMembersReq) GetTeamName() TeamName {
 	return s.TeamName
 }
 
 // SetTeamName sets the value of TeamName.
-func (s *DeactivateTeamMembersReq) SetTeamName(val string) {
+func (s *DeactivateTeamMembersReq) SetTeamName(val TeamName) {
 	s.TeamName = val
 }
 
@@ -699,7 +699,7 @@ func (o OptUser) Or(d User) User {
 // Ref: #/components/schemas/PullRequest
 type PullRequest struct {
 	PullRequestID   uuid.UUID         `json:"pull_request_id"`
-	PullRequestName string            `json:"pull_request_name"`
+	PullRequestName PullRequestName   `json:"pull_request_name"`
 	AuthorID        uuid.UUID         `json:"author_id"`
 	Status          PullRequestStatus `json:"status"`
 	// User_id назначенных ревьюверов (0..2).
@@ -714,7 +714,7 @@ func (s *PullRequest) GetPullRequestID() uuid.UUID {
 }
 
 // GetPullRequestName returns the value of PullRequestName.
-func (s *PullRequest) GetPullRequestName() string {
+func (s *PullRequest) GetPullRequestName() PullRequestName {
 	return s.PullRequestName
 }
 
@@ -749,7 +749,7 @@ func (s *PullRequest) SetPullRequestID(val uuid.UUID) {
 }
 
 // SetPullRequestName sets the value of PullRequestName.
-func (s *PullRequest) SetPullRequestName(val string) {
+func (s *PullRequest) SetPullRequestName(val PullRequestName) {
 	s.PullRequestName = val
 }
 
@@ -778,10 +778,12 @@ func (s *PullRequest) SetMergedAt(val OptNilDateTime) {
 	s.MergedAt = val
 }
 
+type PullRequestName string
+
 // Ref: #/components/schemas/PullRequestShort
 type PullRequestShort struct {
 	PullRequestID   uuid.UUID              `json:"pull_request_id"`
-	PullRequestName string                 `json:"pull_request_name"`
+	PullRequestName PullRequestName        `json:"pull_request_name"`
 	AuthorID        uuid.UUID              `json:"author_id"`
 	Status          PullRequestShortStatus `json:"status"`
 }
@@ -792,7 +794,7 @@ func (s *PullRequestShort) GetPullRequestID() uuid.UUID {
 }
 
 // GetPullRequestName returns the value of PullRequestName.
-func (s *PullRequestShort) GetPullRequestName() string {
+func (s *PullRequestShort) GetPullRequestName() PullRequestName {
 	return s.PullRequestName
 }
 
@@ -812,7 +814,7 @@ func (s *PullRequestShort) SetPullRequestID(val uuid.UUID) {
 }
 
 // SetPullRequestName sets the value of PullRequestName.
-func (s *PullRequestShort) SetPullRequestName(val string) {
+func (s *PullRequestShort) SetPullRequestName(val PullRequestName) {
 	s.PullRequestName = val
 }
 
@@ -1032,12 +1034,12 @@ func (s *SetUserActiveReq) SetIsActive(val bool) {
 
 // Ref: #/components/schemas/Team
 type Team struct {
-	TeamName string       `json:"team_name"`
+	TeamName TeamName     `json:"team_name"`
 	Members  []TeamMember `json:"members"`
 }
 
 // GetTeamName returns the value of TeamName.
-func (s *Team) GetTeamName() string {
+func (s *Team) GetTeamName() TeamName {
 	return s.TeamName
 }
 
@@ -1047,7 +1049,7 @@ func (s *Team) GetMembers() []TeamMember {
 }
 
 // SetTeamName sets the value of TeamName.
-func (s *Team) SetTeamName(val string) {
+func (s *Team) SetTeamName(val TeamName) {
 	s.TeamName = val
 }
 
@@ -1061,7 +1063,7 @@ func (*Team) getTeamRes() {}
 // Ref: #/components/schemas/TeamMember
 type TeamMember struct {
 	UserID   uuid.UUID `json:"user_id"`
-	Username string    `json:"username"`
+	Username Username  `json:"username"`
 	IsActive bool      `json:"is_active"`
 }
 
@@ -1071,7 +1073,7 @@ func (s *TeamMember) GetUserID() uuid.UUID {
 }
 
 // GetUsername returns the value of Username.
-func (s *TeamMember) GetUsername() string {
+func (s *TeamMember) GetUsername() Username {
 	return s.Username
 }
 
@@ -1086,7 +1088,7 @@ func (s *TeamMember) SetUserID(val uuid.UUID) {
 }
 
 // SetUsername sets the value of Username.
-func (s *TeamMember) SetUsername(val string) {
+func (s *TeamMember) SetUsername(val Username) {
 	s.Username = val
 }
 
@@ -1095,11 +1097,13 @@ func (s *TeamMember) SetIsActive(val bool) {
 	s.IsActive = val
 }
 
+type TeamName string
+
 // Ref: #/components/schemas/User
 type User struct {
 	UserID   uuid.UUID `json:"user_id"`
-	Username string    `json:"username"`
-	TeamName string    `json:"team_name"`
+	Username Username  `json:"username"`
+	TeamName TeamName  `json:"team_name"`
 	IsActive bool      `json:"is_active"`
 }
 
@@ -1109,12 +1113,12 @@ func (s *User) GetUserID() uuid.UUID {
 }
 
 // GetUsername returns the value of Username.
-func (s *User) GetUsername() string {
+func (s *User) GetUsername() Username {
 	return s.Username
 }
 
 // GetTeamName returns the value of TeamName.
-func (s *User) GetTeamName() string {
+func (s *User) GetTeamName() TeamName {
 	return s.TeamName
 }
 
@@ -1129,12 +1133,12 @@ func (s *User) SetUserID(val uuid.UUID) {
 }
 
 // SetUsername sets the value of Username.
-func (s *User) SetUsername(val string) {
+func (s *User) SetUsername(val Username) {
 	s.Username = val
 }
 
 // SetTeamName sets the value of TeamName.
-func (s *User) SetTeamName(val string) {
+func (s *User) SetTeamName(val TeamName) {
 	s.TeamName = val
 }
 
@@ -1142,3 +1146,5 @@ func (s *User) SetTeamName(val string) {
 func (s *User) SetIsActive(val bool) {
 	s.IsActive = val
 }
+
+type Username string

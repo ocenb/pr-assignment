@@ -60,7 +60,7 @@ func (r *Repo) Get(ctx context.Context, teamName string) (*api.Team, error) {
 		if uID != nil {
 			members = append(members, api.TeamMember{
 				UserID:   *uID,
-				Username: *uName,
+				Username: api.Username(*uName),
 				IsActive: *uActive,
 			})
 		}
@@ -77,7 +77,7 @@ func (r *Repo) Get(ctx context.Context, teamName string) (*api.Team, error) {
 		members = []api.TeamMember{}
 	}
 	team.Members = members
-	team.TeamName = teamName
+	team.TeamName = api.TeamName(teamName)
 
 	return &team, nil
 }

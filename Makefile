@@ -8,14 +8,19 @@ tidy:
 	go mod tidy
 
 test e2e:
-	docker compose -f docker-compose.test.yaml up -d --build
-	go test ./tests -v ; EXIT_CODE=$$? ; docker compose -f docker-compose.test.yaml down -v ; exit $$EXIT_CODE
+	docker compose --env-file .env.test -f docker-compose.test.yaml up -d --build
+	go test ./tests -v -count=1 ; \
+	EXIT_CODE=$$? ; \
+	docker compose -f docker-compose.test.yaml down -v ; \
+	exit $$EXIT_CODE
 
 loadtest:
-	docker compose -f docker-compose.test.yaml up -d --build
-	go run cmd/loadtest/main.go --cmd=setup
-	go run cmd/loadtest/main.go --cmd=test
-	docker compose -f docker-compose.test.yaml down -v
+	docker compose --env-file .env.test -f docker-compose.test.yaml up -d --build
+	go run cmd/loadtest/main.go --cmd=setup && \
+	go run cmd/loadtest/main.go --cmd=test ; \
+	EXIT_CODE=$$? ; \
+	docker compose -f docker-compose.test.yaml down -v ; \
+	exit $$EXIT_CODE
 
 gen:
 	go tool ogen --target internal/api --config openapi/ogen.yaml --clean openapi/openapi.yaml

@@ -78,16 +78,8 @@ func (s *CreatePullRequestReq) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    255,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.PullRequestName)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.PullRequestName.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -187,16 +179,8 @@ func (s *DeactivateTeamMembersReq) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    50,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.TeamName)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.TeamName.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -463,16 +447,8 @@ func (s *PullRequest) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    255,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.PullRequestName)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.PullRequestName.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -509,6 +485,22 @@ func (s *PullRequest) Validate() error {
 	return nil
 }
 
+func (s PullRequestName) Validate() error {
+	alias := (string)(s)
+	if err := (validate.String{
+		MinLength:    3,
+		MinLengthSet: true,
+		MaxLength:    255,
+		MaxLengthSet: true,
+		Email:        false,
+		Hostname:     false,
+		Regex:        regexMap["^[a-zA-Z0-9][a-zA-Z0-9_ -]*[a-zA-Z0-9]$"],
+	}).Validate(string(alias)); err != nil {
+		return errors.Wrap(err, "string")
+	}
+	return nil
+}
+
 func (s *PullRequestShort) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -516,16 +508,8 @@ func (s *PullRequestShort) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    255,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.PullRequestName)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.PullRequestName.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -689,16 +673,8 @@ func (s *Team) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    50,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.TeamName)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.TeamName.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -748,16 +724,8 @@ func (s *TeamMember) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    50,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.Username)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.Username.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -772,6 +740,22 @@ func (s *TeamMember) Validate() error {
 	return nil
 }
 
+func (s TeamName) Validate() error {
+	alias := (string)(s)
+	if err := (validate.String{
+		MinLength:    3,
+		MinLengthSet: true,
+		MaxLength:    50,
+		MaxLengthSet: true,
+		Email:        false,
+		Hostname:     false,
+		Regex:        regexMap["^[a-z0-9][a-z0-9_-]*[a-z0-9]$"],
+	}).Validate(string(alias)); err != nil {
+		return errors.Wrap(err, "string")
+	}
+	return nil
+}
+
 func (s *User) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -779,16 +763,8 @@ func (s *User) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    50,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.Username)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.Username.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -798,16 +774,8 @@ func (s *User) Validate() error {
 		})
 	}
 	if err := func() error {
-		if err := (validate.String{
-			MinLength:    3,
-			MinLengthSet: true,
-			MaxLength:    50,
-			MaxLengthSet: true,
-			Email:        false,
-			Hostname:     false,
-			Regex:        nil,
-		}).Validate(string(s.TeamName)); err != nil {
-			return errors.Wrap(err, "string")
+		if err := s.TeamName.Validate(); err != nil {
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -818,6 +786,22 @@ func (s *User) Validate() error {
 	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s Username) Validate() error {
+	alias := (string)(s)
+	if err := (validate.String{
+		MinLength:    3,
+		MinLengthSet: true,
+		MaxLength:    50,
+		MaxLengthSet: true,
+		Email:        false,
+		Hostname:     false,
+		Regex:        regexMap["^[a-zA-Z0-9][a-zA-Z0-9_ -]*[a-zA-Z0-9]$"],
+	}).Validate(string(alias)); err != nil {
+		return errors.Wrap(err, "string")
 	}
 	return nil
 }

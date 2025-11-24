@@ -10,10 +10,12 @@ import (
 )
 
 type Config struct {
-	Environment string `env:"ENVIRONMENT" env-default:"local"`
-	Log         LogConfig
-	Server      ServerConfig
-	Postgres    PostgresConfig
+	Environment      string        `env:"ENVIRONMENT" env-default:"local"`
+	DBConnectTimeout time.Duration `env:"DB_CONNECT_TIMEOUT" env-default:"10s"`
+	ShutdownTimeout  time.Duration `env:"SHUTDOWN_TIMEOUT" env-default:"10s"`
+	Log              LogConfig
+	Server           ServerConfig
+	Postgres         PostgresConfig
 }
 
 type LogConfig struct {

@@ -17,9 +17,7 @@ type Repo interface {
 	GetByID(ctx context.Context, prID uuid.UUID) (*api.PullRequest, error)
 	Merge(ctx context.Context, prID uuid.UUID) error
 	GetTwoActiveTeamMembersByAuthorID(ctx context.Context, authorID uuid.UUID) ([]uuid.UUID, error)
-	ValidatePRForReassign(ctx context.Context, prID, oldReviewerID uuid.UUID) error
-	GetReassignmentCandidate(ctx context.Context, prID, oldReviewerID uuid.UUID) (uuid.UUID, error)
-	ReplaceReviewer(ctx context.Context, prID, oldUserID, newUserID uuid.UUID) error
+	ReassignReviewer(ctx context.Context, prID, oldReviewerID uuid.UUID) (uuid.UUID, error)
 }
 
 type Service struct {
@@ -128,17 +126,10 @@ func (s *Service) ReassignReviewer(ctx context.Context, req *api.ReassignReviewe
 	var newReviewerID uuid.UUID
 
 	err := s.tm.Run(ctx, func(ctxTX context.Context) error {
-		if err := s.repo.ValidatePRForReassign(ctxTX, req.PullRequestID, req.OldUserID); err != nil {
-			return err
-		}
-
 		var err error
-		newReviewerID, err = s.repo.GetReassignmentCandidate(ctxTX, req.PullRequestID, req.OldUserID)
-		if err != nil {
-			return err
-		}
 
-		if err := s.repo.ReplaceReviewer(ctxTX, req.PullRequestID, req.OldUserID, newReviewerID); err != nil {
+		newReviewerID, err = s.repo.ReassignReviewer(ctxTX, req.PullRequestID, req.OldUserID)
+		if err != nil {
 			return err
 		}
 

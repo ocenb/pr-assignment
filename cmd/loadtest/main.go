@@ -248,10 +248,9 @@ func validateSLI(metrics *vegeta.Metrics) {
 	if successPass && latencyPass {
 		fmt.Println("\n✓ All SLI targets met successfully")
 		os.Exit(0)
-	} else {
-		fmt.Println("\n✗ SLI targets violated")
-		os.Exit(1)
 	}
+	fmt.Println("\n✗ SLI targets violated")
+	os.Exit(1)
 }
 
 func status(pass bool) string {

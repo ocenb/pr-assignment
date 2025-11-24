@@ -49,9 +49,8 @@ func (r *Repo) Create(ctx context.Context, pr *api.CreatePullRequestReq, reviewe
 
 	if len(reviewers) > 0 {
 		for _, reviewerID := range reviewers {
-			insertReviewer := `INSERT INTO reviewers (pull_request_id, user_id) VALUES ($1, $2)`
-			if _, err := q.Exec(ctx, insertReviewer, pr.PullRequestID, reviewerID); err != nil {
-				return nil, fmt.Errorf("failed to add reviewer: %w", err)
+			if err := r.AddReviewer(ctx, pr.PullRequestID, reviewerID); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -199,92 +198,89 @@ func (r *Repo) GetTwoActiveTeamMembersByAuthorID(ctx context.Context, authorID u
 	return members, nil
 }
 
-func (r *Repo) GetReassignmentCandidate(ctx context.Context, prID, oldReviewerID uuid.UUID) (uuid.UUID, error) {
+// Atomic reassignment of reviewer.
+//
+// 1. Get PR status.
+// 2. Find candidate (same team, active, not author, not old reviewer).
+// 3. Check if there is an old reviewer.
+// 4. Execute reassignment, only if PR is open and candidate found.
+func (r *Repo) ReassignReviewer(ctx context.Context, prID, oldReviewerID uuid.UUID) (uuid.UUID, error) {
 	q := r.tm.GetQueryEngine(ctx)
 
 	query := `
-		SELECT u.id
-		FROM pull_requests pr
-		JOIN users author ON author.id = pr.author_id
-		JOIN users u ON u.team_id = author.team_id
-		WHERE pr.id = $1
-			AND u.is_active = true
-			AND u.id != pr.author_id
-			AND u.id != $2
-			AND NOT EXISTS (
-				SELECT 1
-				FROM reviewers r
-				WHERE r.pull_request_id = $1
-				AND r.user_id = u.id
-			)
-		ORDER BY RANDOM()
-		LIMIT 1
-	`
-
-	var candidateID uuid.UUID
-	err := q.QueryRow(ctx, query, prID, oldReviewerID).Scan(&candidateID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return uuid.Nil, errs.ErrNoCandidate
-		}
-		return uuid.Nil, fmt.Errorf("failed to get reassignment candidate: %w", err)
-	}
-
-	return candidateID, nil
-}
-
-func (r *Repo) ValidatePRForReassign(ctx context.Context, prID, oldReviewerID uuid.UUID) error {
-	q := r.tm.GetQueryEngine(ctx)
-
-	query := `
+		WITH pr_info AS (
+			SELECT status, author_id 
+			FROM pull_requests 
+			WHERE id = $1
+		),
+		candidate AS (
+			SELECT u.id
+			FROM pr_info pi
+			JOIN users author ON author.id = pi.author_id
+			JOIN users u ON u.team_id = author.team_id
+			WHERE u.is_active = true
+				AND u.id != pi.author_id
+				AND u.id != $2
+				AND NOT EXISTS (
+						SELECT 1 FROM reviewers r 
+						WHERE r.pull_request_id = $1 AND r.user_id = u.id
+				)
+			ORDER BY RANDOM()
+			LIMIT 1
+		),
+		old_reviewer_check AS (
+			SELECT 1 FROM reviewers 
+			WHERE pull_request_id = $1 AND user_id = $2
+		),
+		update_op AS (
+			UPDATE reviewers
+			SET user_id = (SELECT id FROM candidate)
+			WHERE pull_request_id = $1
+				AND user_id = $2
+				AND (SELECT status FROM pr_info) = 'OPEN'
+				AND EXISTS (SELECT 1 FROM candidate)
+			RETURNING user_id
+		)
 		SELECT 
-			pr.status,
-			EXISTS(SELECT 1 FROM reviewers WHERE pull_request_id = pr.id AND user_id = $2) as is_assigned
-		FROM pull_requests pr
-		WHERE pr.id = $1
-	`
+			(SELECT status FROM pr_info) as pr_status,
+			(SELECT id FROM candidate) as candidate_id,
+			EXISTS(SELECT 1 FROM old_reviewer_check) as old_reviewer_exists,
+			(SELECT user_id FROM update_op) as new_reviewer_id
+    `
 
-	var status string
-	var isAssigned bool
+	var (
+		prStatus          *string
+		candidateID       *uuid.UUID
+		oldReviewerExists bool
+		newReviewerID     *uuid.UUID
+	)
 
-	err := q.QueryRow(ctx, query, prID, oldReviewerID).Scan(&status, &isAssigned)
+	err := q.QueryRow(ctx, query, prID, oldReviewerID).Scan(
+		&prStatus,
+		&candidateID,
+		&oldReviewerExists,
+		&newReviewerID,
+	)
+
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errs.ErrPRNotFound
-		}
-		return fmt.Errorf("failed to validate PR for reassign: %w", err)
+		return uuid.Nil, fmt.Errorf("failed to execute reassign transaction: %w", err)
 	}
-
-	if status == "MERGED" {
-		return errs.ErrPRMerged
+	if prStatus == nil {
+		return uuid.Nil, errs.ErrPRNotFound
 	}
-
-	if !isAssigned {
-		return errs.ErrNotAssigned
+	if *prStatus == "MERGED" {
+		return uuid.Nil, errs.ErrPRMerged
 	}
-
-	return nil
-}
-
-func (r *Repo) ReplaceReviewer(ctx context.Context, prID, oldUserID, newUserID uuid.UUID) error {
-	q := r.tm.GetQueryEngine(ctx)
-
-	query := `
-		UPDATE reviewers
-		SET user_id = $3
-		WHERE pull_request_id = $1 AND user_id = $2
-	`
-
-	result, err := q.Exec(ctx, query, prID, oldUserID, newUserID)
-	if err != nil {
-		return fmt.Errorf("failed to replace reviewer: %w", err)
+	if !oldReviewerExists {
+		return uuid.Nil, errs.ErrNotAssigned
 	}
-
-	if result.RowsAffected() == 0 {
-		return errs.ErrNotAssigned
+	if candidateID == nil {
+		return uuid.Nil, errs.ErrNoCandidate
 	}
-
-	return nil
+	if newReviewerID == nil {
+		return uuid.Nil, fmt.Errorf("failed to replace reviewer due to unknown reason")
+	}
+	return *newReviewerID, nil
 }
 
 func (r *Repo) AddReviewer(ctx context.Context, prID, userID uuid.UUID) error {
@@ -292,7 +288,9 @@ func (r *Repo) AddReviewer(ctx context.Context, prID, userID uuid.UUID) error {
 
 	query := `
 		INSERT INTO reviewers (pull_request_id, user_id)
-		VALUES ($1, $2)
+		SELECT $1, $2
+		FROM users u
+		WHERE u.id = $2 AND u.is_active = true
 		ON CONFLICT (pull_request_id, user_id) DO NOTHING
 	`
 
@@ -379,16 +377,13 @@ func (r *Repo) RemoveTeamReviewersFromOpenPRs(ctx context.Context, teamName stri
 	q := r.tm.GetQueryEngine(ctx)
 
 	query := `
-		DELETE FROM reviewers
-		WHERE (pull_request_id, user_id) IN (
-			SELECT rev.pull_request_id, rev.user_id
-			FROM reviewers rev
-			JOIN pull_requests pr ON pr.id = rev.pull_request_id
-			JOIN users u ON u.id = rev.user_id
-			JOIN teams t ON t.id = u.team_id
-			WHERE t.name = $1 
-				AND pr.status = 'OPEN'
-		)
+    DELETE FROM reviewers r
+    USING users u, teams t, pull_requests pr
+    WHERE r.user_id = u.id
+      AND u.team_id = t.id
+      AND r.pull_request_id = pr.id
+      AND t.name = $1
+      AND pr.status = 'OPEN'
 	`
 
 	result, err := q.Exec(ctx, query, teamName)

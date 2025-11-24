@@ -3,14 +3,15 @@ services:
     build: .
     container_name: pr-assignment-app-test
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     depends_on:
       postgres_test:
         condition: service_healthy
     env_file:
       - .env.test
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      test:
+        ["CMD-SHELL", "wget --spider -q http://localhost:${PORT:-8000}/health"]
       interval: 5s
       timeout: 2s
       retries: 3

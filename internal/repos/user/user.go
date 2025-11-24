@@ -20,27 +20,6 @@ func New(tm *transactor.Manager) *Repo {
 	return &Repo{tm}
 }
 
-func (r *Repo) GetUserByID(ctx context.Context, userID uuid.UUID) (*api.User, error) {
-	q := r.tm.GetQueryEngine(ctx)
-	query := `
-		SELECT u.id, u.username, t.name, u.is_active 
-		FROM users u 
-		JOIN teams t ON u.team_id = t.id 
-		WHERE u.id = $1
-	`
-
-	var user api.User
-	err := q.QueryRow(ctx, query, userID).Scan(&user.UserID, &user.Username, &user.TeamName, &user.IsActive)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, errs.ErrUserNotFound
-		}
-		return nil, fmt.Errorf("failed to get user: %w", err)
-	}
-
-	return &user, nil
-}
-
 func (r *Repo) SetActive(ctx context.Context, userID uuid.UUID, isActive bool) (*api.User, error) {
 	q := r.tm.GetQueryEngine(ctx)
 

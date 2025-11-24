@@ -244,7 +244,7 @@ func (s *CreatePullRequestReq) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("pull_request_name")
-		e.Str(s.PullRequestName)
+		s.PullRequestName.Encode(e)
 	}
 	{
 		e.FieldStart("author_id")
@@ -282,9 +282,7 @@ func (s *CreatePullRequestReq) Decode(d *jx.Decoder) error {
 		case "pull_request_name":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.PullRequestName = string(v)
-				if err != nil {
+				if err := s.PullRequestName.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -774,7 +772,7 @@ func (s *DeactivateTeamMembersReq) Encode(e *jx.Encoder) {
 func (s *DeactivateTeamMembersReq) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("team_name")
-		e.Str(s.TeamName)
+		s.TeamName.Encode(e)
 	}
 }
 
@@ -794,9 +792,7 @@ func (s *DeactivateTeamMembersReq) Decode(d *jx.Decoder) error {
 		case "team_name":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Str()
-				s.TeamName = string(v)
-				if err != nil {
+				if err := s.TeamName.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -2298,7 +2294,7 @@ func (s *PullRequest) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("pull_request_name")
-		e.Str(s.PullRequestName)
+		s.PullRequestName.Encode(e)
 	}
 	{
 		e.FieldStart("author_id")
@@ -2364,9 +2360,7 @@ func (s *PullRequest) Decode(d *jx.Decoder) error {
 		case "pull_request_name":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.PullRequestName = string(v)
-				if err != nil {
+				if err := s.PullRequestName.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -2491,6 +2485,46 @@ func (s *PullRequest) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes PullRequestName as json.
+func (s PullRequestName) Encode(e *jx.Encoder) {
+	unwrapped := string(s)
+
+	e.Str(unwrapped)
+}
+
+// Decode decodes PullRequestName from json.
+func (s *PullRequestName) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PullRequestName to nil")
+	}
+	var unwrapped string
+	if err := func() error {
+		v, err := d.Str()
+		unwrapped = string(v)
+		if err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PullRequestName(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PullRequestName) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PullRequestName) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *PullRequestShort) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -2506,7 +2540,7 @@ func (s *PullRequestShort) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("pull_request_name")
-		e.Str(s.PullRequestName)
+		s.PullRequestName.Encode(e)
 	}
 	{
 		e.FieldStart("author_id")
@@ -2549,9 +2583,7 @@ func (s *PullRequestShort) Decode(d *jx.Decoder) error {
 		case "pull_request_name":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.PullRequestName = string(v)
-				if err != nil {
+				if err := s.PullRequestName.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -3393,7 +3425,7 @@ func (s *Team) Encode(e *jx.Encoder) {
 func (s *Team) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("team_name")
-		e.Str(s.TeamName)
+		s.TeamName.Encode(e)
 	}
 	{
 		e.FieldStart("members")
@@ -3422,9 +3454,7 @@ func (s *Team) Decode(d *jx.Decoder) error {
 		case "team_name":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Str()
-				s.TeamName = string(v)
-				if err != nil {
+				if err := s.TeamName.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -3520,7 +3550,7 @@ func (s *TeamMember) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("username")
-		e.Str(s.Username)
+		s.Username.Encode(e)
 	}
 	{
 		e.FieldStart("is_active")
@@ -3558,9 +3588,7 @@ func (s *TeamMember) Decode(d *jx.Decoder) error {
 		case "username":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.Username = string(v)
-				if err != nil {
+				if err := s.Username.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -3635,6 +3663,46 @@ func (s *TeamMember) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes TeamName as json.
+func (s TeamName) Encode(e *jx.Encoder) {
+	unwrapped := string(s)
+
+	e.Str(unwrapped)
+}
+
+// Decode decodes TeamName from json.
+func (s *TeamName) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TeamName to nil")
+	}
+	var unwrapped string
+	if err := func() error {
+		v, err := d.Str()
+		unwrapped = string(v)
+		if err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = TeamName(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TeamName) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TeamName) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *User) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -3650,11 +3718,11 @@ func (s *User) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("username")
-		e.Str(s.Username)
+		s.Username.Encode(e)
 	}
 	{
 		e.FieldStart("team_name")
-		e.Str(s.TeamName)
+		s.TeamName.Encode(e)
 	}
 	{
 		e.FieldStart("is_active")
@@ -3693,9 +3761,7 @@ func (s *User) Decode(d *jx.Decoder) error {
 		case "username":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.Username = string(v)
-				if err != nil {
+				if err := s.Username.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -3705,9 +3771,7 @@ func (s *User) Decode(d *jx.Decoder) error {
 		case "team_name":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := d.Str()
-				s.TeamName = string(v)
-				if err != nil {
+				if err := s.TeamName.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -3778,6 +3842,46 @@ func (s *User) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *User) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes Username as json.
+func (s Username) Encode(e *jx.Encoder) {
+	unwrapped := string(s)
+
+	e.Str(unwrapped)
+}
+
+// Decode decodes Username from json.
+func (s *Username) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode Username to nil")
+	}
+	var unwrapped string
+	if err := func() error {
+		v, err := d.Str()
+		unwrapped = string(v)
+		if err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = Username(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s Username) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *Username) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

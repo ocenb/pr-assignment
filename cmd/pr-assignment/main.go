@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/ocenb/pr-assignment/internal/config"
 	"github.com/ocenb/pr-assignment/internal/handler"
@@ -38,7 +37,9 @@ func run() int {
 		slog.String("port", cfg.Postgres.Port),
 		slog.String("database", cfg.Postgres.Name),
 	)
-	pool, err := postgres.NewPool(context.Background(), cfg)
+	connectCtx, connectCancel := context.WithTimeout(context.Background(), cfg.DBConnectTimeout)
+	defer connectCancel()
+	pool, err := postgres.NewPool(connectCtx, cfg)
 	if err != nil {
 		log.Error("failed to connect to postgres", logattr.Err(err))
 		return 1
@@ -82,7 +83,7 @@ func run() int {
 		log.Info("received shutdown signal", slog.String("signal", sig.String()))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err := httpServer.Stop(ctx); err != nil {

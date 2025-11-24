@@ -8,7 +8,8 @@ RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o main ./cmd/pr-assignment
 FROM alpine:3.22.2
 RUN adduser -D -H -h /app appuser
 WORKDIR /app
-COPY --from=builder --chown=appuser /app/main .
+RUN chown appuser:appuser /app
+COPY --from=builder --chown=appuser:appuser /app/main .
 USER appuser
-EXPOSE 8080 9000
+EXPOSE 8080
 CMD ["./main"]

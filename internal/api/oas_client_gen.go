@@ -348,7 +348,10 @@ func (c *Client) sendGetTeam(ctx context.Context, params GetTeamParams) (res Get
 		}
 
 		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
-			return e.EncodeValue(conv.StringToString(params.TeamName))
+			if unwrapped := string(params.TeamName); true {
+				return e.EncodeValue(conv.StringToString(unwrapped))
+			}
+			return nil
 		}); err != nil {
 			return res, errors.Wrap(err, "encode query")
 		}

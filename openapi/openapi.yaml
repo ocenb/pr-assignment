@@ -17,9 +17,7 @@ components:
       in: query
       required: true
       schema:
-        type: string
-        minLength: 3
-        maxLength: 50
+        $ref: "#/components/schemas/TeamName"
       description: Уникальное имя команды
     UserIdQuery:
       name: user_id
@@ -63,9 +61,7 @@ components:
           type: string
           format: uuid
         username:
-          type: string
-          minLength: 3
-          maxLength: 50
+          $ref: "#/components/schemas/Username"
         is_active:
           type: boolean
     Team:
@@ -73,9 +69,7 @@ components:
       required: [team_name, members]
       properties:
         team_name:
-          type: string
-          minLength: 3
-          maxLength: 50
+          $ref: "#/components/schemas/TeamName"
         members:
           type: array
           items:
@@ -88,13 +82,9 @@ components:
           type: string
           format: uuid
         username:
-          type: string
-          minLength: 3
-          maxLength: 50
+          $ref: "#/components/schemas/Username"
         team_name:
-          type: string
-          minLength: 3
-          maxLength: 50
+          $ref: "#/components/schemas/TeamName"
         is_active:
           type: boolean
     PullRequest:
@@ -112,9 +102,7 @@ components:
           type: string
           format: uuid
         pull_request_name:
-          type: string
-          minLength: 3
-          maxLength: 255
+          $ref: "#/components/schemas/PullRequestName"
         author_id:
           type: string
           format: uuid
@@ -143,15 +131,28 @@ components:
           type: string
           format: uuid
         pull_request_name:
-          type: string
-          minLength: 3
-          maxLength: 255
+          $ref: "#/components/schemas/PullRequestName"
         author_id:
           type: string
           format: uuid
         status:
           type: string
           enum: [OPEN, MERGED]
+    TeamName:
+      type: string
+      minLength: 3
+      maxLength: 50
+      pattern: "^[a-z0-9][a-z0-9_-]*[a-z0-9]$"
+    Username:
+      type: string
+      minLength: 3
+      maxLength: 50
+      pattern: "^[a-zA-Z0-9][a-zA-Z0-9_ -]*[a-zA-Z0-9]$"
+    PullRequestName:
+      type: string
+      minLength: 3
+      maxLength: 255
+      pattern: "^[a-zA-Z0-9][a-zA-Z0-9_ -]*[a-zA-Z0-9]$"
 
 paths:
   /health:
@@ -340,7 +341,7 @@ paths:
               properties:
                 pull_request_id: { type: string, format: uuid }
                 pull_request_name:
-                  { type: string, minLength: 3, maxLength: 255 }
+                  $ref: "#/components/schemas/PullRequestName"
                 author_id: { type: string, format: uuid }
             example:
               pull_request_id: 770e8400-e29b-41d4-a716-446655440002
@@ -627,9 +628,7 @@ paths:
               required: [team_name]
               properties:
                 team_name:
-                  type: string
-                  minLength: 3
-                  maxLength: 50
+                  $ref: "#/components/schemas/TeamName"
             example:
               team_name: backend
       responses:
