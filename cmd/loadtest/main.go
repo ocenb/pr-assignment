@@ -1,35 +1,32 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"flag"
 	"fmt"
-	"io"
-	"log"
 	"math/rand/v2"
-	"net/http"
 	"os"
-	"sync/atomic"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/ocenb/pr-assignment/internal/api"
 	vegeta "github.com/tsenart/vegeta/v12/lib"
 )
 
 var baseURL = flag.String("api-url", "http://localhost:8000", "URL for the test API")
 
 var (
-	teamNames = []string{"backend", "frontend", "qateam"}
-	userIDs   = []string{
-		"00000000-0000-0000-0000-000000000001", // Alice (Backend)
-		"00000000-0000-0000-0000-000000000002", // Bob (Backend)
-		"00000000-0000-0000-0000-000000000003", // Charlie (Backend)
-		"00000000-0000-0000-0000-000000000004", // David (Frontend)
-		"00000000-0000-0000-0000-000000000005", // Eve (Frontend)
-		"00000000-0000-0000-0000-000000000006", // Frank (Frontend)
-		"00000000-0000-0000-0000-000000000007", // Grace (QA)
-		"00000000-0000-0000-0000-000000000008", // Henry (QA)
+	teamNames = []api.TeamName{"backend", "frontend", "qateam"}
+	userIDs   = []uuid.UUID{
+		uuid.MustParse("00000000-0000-0000-0000-000000000001"), // Alice (Backend)
+		uuid.MustParse("00000000-0000-0000-0000-000000000002"), // Bob (Backend)
+		uuid.MustParse("00000000-0000-0000-0000-000000000003"), // Charlie (Backend)
+		uuid.MustParse("00000000-0000-0000-0000-000000000004"), // David (Frontend)
+		uuid.MustParse("00000000-0000-0000-0000-000000000005"), // Eve (Frontend)
+		uuid.MustParse("00000000-0000-0000-0000-000000000006"), // Frank (Frontend)
+		uuid.MustParse("00000000-0000-0000-0000-000000000007"), // Grace (QA)
+		uuid.MustParse("00000000-0000-0000-0000-000000000008"), // Henry (QA)
 	}
 )
 
@@ -51,177 +48,250 @@ func main() {
 		Command:  *cmd,
 	}
 
+	client, err := api.NewClient(*baseURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to create client: %v\n", err)
+		os.Exit(1)
+	}
+
 	switch config.Command {
 	case "setup":
-		setupTestData()
+		setupTestData(client)
 	case "test":
-		runLoadTest(config)
+		if !runLoadTest(config, client) {
+			os.Exit(1)
+		}
 	default:
 		fmt.Println("Unknown command. Use: setup, test")
 		os.Exit(1)
 	}
 }
 
-func setupTestData() {
+func setupTestData(client *api.Client) {
 	fmt.Println("Setting up consistent test data...")
+	ctx := context.Background()
 
-	teams := []struct {
-		Name    string
-		Members []map[string]interface{}
-	}{
+	teams := []api.Team{
 		{
-			Name: "backend",
-			Members: []map[string]interface{}{
-				{"user_id": userIDs[0], "username": "Alice", "is_active": true},
-				{"user_id": userIDs[1], "username": "Bob", "is_active": true},
-				{"user_id": userIDs[2], "username": "Charlie", "is_active": true},
+			TeamName: "backend",
+			Members: []api.TeamMember{
+				{UserID: userIDs[0], Username: "Alice", IsActive: true},
+				{UserID: userIDs[1], Username: "Bob", IsActive: true},
+				{UserID: userIDs[2], Username: "Charlie", IsActive: true},
 			},
 		},
 		{
-			Name: "frontend",
-			Members: []map[string]interface{}{
-				{"user_id": userIDs[3], "username": "David", "is_active": true},
-				{"user_id": userIDs[4], "username": "Eve", "is_active": true},
-				{"user_id": userIDs[5], "username": "Frank", "is_active": true},
+			TeamName: "frontend",
+			Members: []api.TeamMember{
+				{UserID: userIDs[3], Username: "David", IsActive: true},
+				{UserID: userIDs[4], Username: "Eve", IsActive: true},
+				{UserID: userIDs[5], Username: "Frank", IsActive: true},
 			},
 		},
 		{
-			Name: "qateam",
-			Members: []map[string]interface{}{
-				{"user_id": userIDs[6], "username": "Grace", "is_active": true},
-				{"user_id": userIDs[7], "username": "Henry", "is_active": true},
+			TeamName: "qateam",
+			Members: []api.TeamMember{
+				{UserID: userIDs[6], Username: "Grace", IsActive: true},
+				{UserID: userIDs[7], Username: "Henry", IsActive: true},
 			},
 		},
 	}
 
 	for _, team := range teams {
-		payload := map[string]interface{}{
-			"team_name": team.Name,
-			"members":   team.Members,
+		_, err := client.CreateTeam(ctx, &team)
+		if err != nil {
+			fmt.Printf("Failed to create team %s: %v\n", team.TeamName, err)
+		} else {
+			fmt.Printf("POST /team/add -> 201 (%s)\n", team.TeamName)
 		}
-		makeRequest("POST", "/team/add", payload)
 		time.Sleep(50 * time.Millisecond)
 	}
 
 	fmt.Println("Test data setup completed")
 }
 
-func runLoadTest(config Config) {
+func runLoadTest(config Config, client *api.Client) bool {
 	fmt.Printf("Running SLI validation test: duration=%v, rate=%d req/s\n", config.Duration, config.Rate)
 
-	targeter := generateStrictTargeter()
-	attacker := vegeta.NewAttacker()
-
 	var metrics vegeta.Metrics
-	for res := range attacker.Attack(targeter, vegeta.Rate{Freq: int(config.Rate), Per: time.Second}, config.Duration, "SLI Test") {
-		metrics.Add(res)
-	}
-	metrics.Close()
-
-	printReport(&metrics)
-	validateSLI(&metrics)
-}
-
-func generateStrictTargeter() vegeta.Targeter {
+	var wg sync.WaitGroup
 	var counter uint64
 
-	return func(tgt *vegeta.Target) error {
-		roll := rand.IntN(10)
-		idx := atomic.AddUint64(&counter, 1)
+	resCh := make(chan *vegeta.Result, config.Rate*2)
+	doneCh := make(chan struct{})
 
-		switch {
-		// --- READ OPERATIONS (Low Risk, High Volume) ---
-		case roll < 3: // 30% Health Check
-			tgt.Method = "GET"
-			tgt.URL = *baseURL + "/health"
-
-		case roll < 5: // 20% Get Stats
-			tgt.Method = "GET"
-			tgt.URL = *baseURL + "/stats/assignments"
-
-		case roll < 7: // 20% Get Existing Team
-			team := teamNames[rand.IntN(len(teamNames))]
-			tgt.Method = "GET"
-			tgt.URL = *baseURL + "/team/get?team_name=" + team
-
-		case roll < 8: // 10% Get User Review (Existing Users)
-			user := userIDs[rand.IntN(len(userIDs))]
-			tgt.Method = "GET"
-			tgt.URL = *baseURL + "/users/getReview?user_id=" + user
-
-		// --- WRITE OPERATIONS (Must be unique to avoid 409) ---
-		case roll == 8: // 10% Create New Team
-			// Ensure unique team name every time
-			uniqueTeamName := fmt.Sprintf("load_team_%d_%s", idx, uuid.New().String()[:8])
-
-			members := []map[string]interface{}{
-				{
-					"user_id":   uuid.New().String(),
-					"username":  fmt.Sprintf("load_user_%d", idx),
-					"is_active": true,
-				},
-			}
-			body, _ := json.Marshal(map[string]interface{}{
-				"team_name": uniqueTeamName,
-				"members":   members,
-			})
-			tgt.Method = "POST"
-			tgt.URL = *baseURL + "/team/add"
-			tgt.Body = body
-			tgt.Header = http.Header{"Content-Type": []string{"application/json"}}
-
-		default: // 10% Create PR
-			// Ensure unique PR ID and name
-			author := userIDs[rand.IntN(len(userIDs))]
-			body, _ := json.Marshal(map[string]interface{}{
-				"pull_request_id":   uuid.New().String(),
-				"pull_request_name": fmt.Sprintf("Load_Feature_%d", idx),
-				"author_id":         author,
-			})
-			tgt.Method = "POST"
-			tgt.URL = *baseURL + "/pullRequest/create"
-			tgt.Body = body
-			tgt.Header = http.Header{"Content-Type": []string{"application/json"}}
+	go func() {
+		for res := range resCh {
+			metrics.Add(res)
 		}
+		close(doneCh)
+	}()
 
-		return nil
+	ticker := time.NewTicker(time.Second / time.Duration(config.Rate))
+	defer ticker.Stop()
+
+	timeout := time.After(config.Duration)
+	ctx := context.Background()
+
+loop:
+	for {
+		select {
+		case <-timeout:
+			break loop
+		case <-ticker.C:
+			wg.Add(1)
+			counter++
+			idx := counter
+			go func(i uint64) {
+				defer wg.Done()
+				start := time.Now()
+				code, err := executeOperation(ctx, client, i)
+				latency := time.Since(start)
+
+				res := &vegeta.Result{
+					Code:      uint16(code),
+					Timestamp: start,
+					Latency:   latency,
+				}
+
+				if err != nil {
+					res.Error = err.Error()
+				}
+
+				resCh <- res
+			}(idx)
+		}
 	}
+
+	wg.Wait()
+	close(resCh)
+	<-doneCh
+
+	metrics.Close()
+	printReport(&metrics)
+	return validateSLI(&metrics)
 }
 
-func makeRequest(method, path string, body interface{}) {
-	var bodyReader io.Reader
-	if body != nil {
-		jsonData, _ := json.Marshal(body)
-		bodyReader = bytes.NewReader(jsonData)
-	}
+func executeOperation(ctx context.Context, client *api.Client, idx uint64) (int, error) {
+	roll := rand.IntN(10)
 
-	req, err := http.NewRequest(method, *baseURL+path, bodyReader)
-	if err != nil {
-		return
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
+	switch {
+	// --- READ OPERATIONS (Low Risk, High Volume) ---
+	case roll < 3: // 30% Health Check
+		res, err := client.CheckHealth(ctx)
+		if err != nil {
+			return 0, err
+		}
+		if _, ok := res.(*api.CheckHealthOK); ok {
+			return 200, nil
+		}
+		return 500, fmt.Errorf("internal server error")
 
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Do(req)
-	if err == nil {
-		defer func() {
-			if closeErr := resp.Body.Close(); closeErr != nil {
-				log.Printf("Warning: failed to close response body: %v", closeErr)
-			}
-		}()
-		fmt.Printf("%s %s -> %d\n", method, path, resp.StatusCode)
+	case roll < 5: // 20% Get Stats
+		res, err := client.GetAssignmentStats(ctx)
+		if err != nil {
+			return 0, err
+		}
+		if _, ok := res.(*api.GetAssignmentStatsOK); ok {
+			return 200, nil
+		}
+		return 500, fmt.Errorf("internal server error")
+
+	case roll < 7: // 20% Get Existing Team
+		teamName := teamNames[rand.IntN(len(teamNames))]
+		res, err := client.GetTeam(ctx, api.GetTeamParams{TeamName: teamName})
+		if err != nil {
+			return 0, err
+		}
+		switch res.(type) {
+		case *api.Team:
+			return 200, nil
+		case *api.GetTeamBadRequest:
+			return 400, fmt.Errorf("bad request")
+		case *api.GetTeamNotFound:
+			return 404, fmt.Errorf("team not found")
+		default:
+			return 500, fmt.Errorf("internal server error")
+		}
+
+	case roll < 8: // 10% Get User Review (Existing Users)
+		user := userIDs[rand.IntN(len(userIDs))]
+		res, err := client.GetUserReviews(ctx, api.GetUserReviewsParams{UserID: user})
+		if err != nil {
+			return 0, err
+		}
+		switch res.(type) {
+		case *api.GetUserReviewsOK:
+			return 200, nil
+		case *api.GetUserReviewsBadRequest:
+			return 400, fmt.Errorf("bad request")
+		case *api.GetUserReviewsNotFound:
+			return 404, fmt.Errorf("user not found")
+		default:
+			return 500, fmt.Errorf("internal server error")
+		}
+
+	// --- WRITE OPERATIONS (Must be unique to avoid 409) ---
+	case roll == 8: // 10% Create New Team
+		uniqueTeamName := fmt.Sprintf("load_team_%d_%s", idx, uuid.New().String()[:8])
+		req := &api.Team{
+			TeamName: api.TeamName(uniqueTeamName),
+			Members: []api.TeamMember{
+				{
+					UserID:   uuid.New(),
+					Username: api.Username(fmt.Sprintf("load_user_%d", idx)),
+					IsActive: true,
+				},
+			},
+		}
+		res, err := client.CreateTeam(ctx, req)
+		if err != nil {
+			return 0, err
+		}
+		switch res.(type) {
+		case *api.CreateTeamCreated:
+			return 201, nil
+		case *api.CreateTeamBadRequest:
+			return 400, fmt.Errorf("bad request")
+		case *api.CreateTeamConflict:
+			return 409, fmt.Errorf("conflict")
+		default:
+			return 500, fmt.Errorf("internal server error")
+		}
+
+	default: // 10% Create PR
+		author := userIDs[rand.IntN(len(userIDs))]
+		req := &api.CreatePullRequestReq{
+			PullRequestID:   uuid.New(),
+			PullRequestName: api.PullRequestName(fmt.Sprintf("Load_Feature_%d", idx)),
+			AuthorID:        author,
+		}
+		res, err := client.CreatePullRequest(ctx, req)
+		if err != nil {
+			return 0, err
+		}
+		switch res.(type) {
+		case *api.CreatePullRequestCreated:
+			return 201, nil
+		case *api.CreatePullRequestBadRequest:
+			return 400, fmt.Errorf("bad request")
+		case *api.CreatePullRequestNotFound:
+			return 404, fmt.Errorf("not found")
+		case *api.CreatePullRequestConflict:
+			return 409, fmt.Errorf("conflict")
+		default:
+			return 500, fmt.Errorf("internal server error")
+		}
 	}
 }
 
 func printReport(metrics *vegeta.Metrics) {
 	fmt.Println("\n=== Test Results ===")
-	fmt.Printf("Requests:      %d\n", metrics.Requests)
-	fmt.Printf("Success Rate:  %.4f%%\n", metrics.Success*100)
-	fmt.Printf("Mean Latency:  %v\n", metrics.Latencies.Mean)
-	fmt.Printf("P95 Latency:   %v\n", metrics.Latencies.P95)
-	fmt.Printf("P99 Latency:   %v\n", metrics.Latencies.P99)
+	fmt.Printf("Requests: %d\n", metrics.Requests)
+	fmt.Printf("Success Rate: %.4f%%\n", metrics.Success*100)
+	fmt.Printf("Mean Latency: %v\n", metrics.Latencies.Mean)
+	fmt.Printf("P95 Latency: %v\n", metrics.Latencies.P95)
+	fmt.Printf("P99 Latency: %v\n", metrics.Latencies.P99)
 
 	fmt.Println("\n--- Status Codes ---")
 	for code, count := range metrics.StatusCodes {
@@ -229,10 +299,9 @@ func printReport(metrics *vegeta.Metrics) {
 	}
 }
 
-func validateSLI(metrics *vegeta.Metrics) {
+func validateSLI(metrics *vegeta.Metrics) bool {
 	fmt.Println("\n=== SLI Validation ===")
 
-	// Strict targets
 	successTarget := 0.999 // 99.9%
 	latencyTarget := 300 * time.Millisecond
 
@@ -241,16 +310,15 @@ func validateSLI(metrics *vegeta.Metrics) {
 
 	fmt.Printf("Success Rate: %.4f%% (target: >= %.3f%%) [%s]\n",
 		metrics.Success*100, successTarget*100, status(successPass))
-
-	fmt.Printf("P95 Latency:  %v (target: <= %v) [%s]\n",
+	fmt.Printf("P95 Latency: %v (target: <= %v) [%s]\n",
 		metrics.Latencies.P95, latencyTarget, status(latencyPass))
 
 	if successPass && latencyPass {
 		fmt.Println("\n✓ All SLI targets met successfully")
-		os.Exit(0)
+		return true
 	}
 	fmt.Println("\n✗ SLI targets violated")
-	os.Exit(1)
+	return false
 }
 
 func status(pass bool) string {
