@@ -24,8 +24,8 @@ func (UnimplementedHandler) CheckHealth(ctx context.Context) (r CheckHealthRes, 
 
 // CreatePullRequest implements CreatePullRequest operation.
 //
-// Создать PR и автоматически назначить до 2 ревьюверов
-// из команды автора.
+// Создать PR и автоматически назначить до 2 ревьюеров из
+// команды автора.
 //
 // POST /pullRequest/create
 func (UnimplementedHandler) CreatePullRequest(ctx context.Context, req *CreatePullRequestReq) (r CreatePullRequestRes, _ error) {
@@ -72,7 +72,8 @@ func (UnimplementedHandler) GetTeam(ctx context.Context, params GetTeamParams) (
 
 // GetUserReviews implements GetUserReviews operation.
 //
-// Получить PR'ы, где пользователь назначен ревьювером.
+// Получить список всех PR, где пользователь назначен
+// ревьюером.
 //
 // GET /users/getReview
 func (UnimplementedHandler) GetUserReviews(ctx context.Context, params GetUserReviewsParams) (r GetUserReviewsRes, _ error) {
@@ -90,8 +91,8 @@ func (UnimplementedHandler) MergePullRequest(ctx context.Context, req *MergePull
 
 // ReassignReviewer implements ReassignReviewer operation.
 //
-// Переназначить конкретного ревьювера на другого из
-// его команды.
+// Переназначить конкретного ревьюера на другого из его
+// команды.
 //
 // POST /pullRequest/reassign
 func (UnimplementedHandler) ReassignReviewer(ctx context.Context, req *ReassignReviewerReq) (r ReassignReviewerRes, _ error) {

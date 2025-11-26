@@ -16,8 +16,8 @@ type Handler interface {
 	CheckHealth(ctx context.Context) (CheckHealthRes, error)
 	// CreatePullRequest implements CreatePullRequest operation.
 	//
-	// Создать PR и автоматически назначить до 2 ревьюверов
-	// из команды автора.
+	// Создать PR и автоматически назначить до 2 ревьюеров из
+	// команды автора.
 	//
 	// POST /pullRequest/create
 	CreatePullRequest(ctx context.Context, req *CreatePullRequestReq) (CreatePullRequestRes, error)
@@ -49,7 +49,8 @@ type Handler interface {
 	GetTeam(ctx context.Context, params GetTeamParams) (GetTeamRes, error)
 	// GetUserReviews implements GetUserReviews operation.
 	//
-	// Получить PR'ы, где пользователь назначен ревьювером.
+	// Получить список всех PR, где пользователь назначен
+	// ревьюером.
 	//
 	// GET /users/getReview
 	GetUserReviews(ctx context.Context, params GetUserReviewsParams) (GetUserReviewsRes, error)
@@ -61,8 +62,8 @@ type Handler interface {
 	MergePullRequest(ctx context.Context, req *MergePullRequestReq) (MergePullRequestRes, error)
 	// ReassignReviewer implements ReassignReviewer operation.
 	//
-	// Переназначить конкретного ревьювера на другого из
-	// его команды.
+	// Переназначить конкретного ревьюера на другого из его
+	// команды.
 	//
 	// POST /pullRequest/reassign
 	ReassignReviewer(ctx context.Context, req *ReassignReviewerReq) (ReassignReviewerRes, error)

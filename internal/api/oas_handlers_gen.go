@@ -91,8 +91,8 @@ func (s *Server) handleCheckHealthRequest(args [0]string, argsEscaped bool, w ht
 
 // handleCreatePullRequestRequest handles CreatePullRequest operation.
 //
-// Создать PR и автоматически назначить до 2 ревьюверов
-// из команды автора.
+// Создать PR и автоматически назначить до 2 ревьюеров из
+// команды автора.
 //
 // POST /pullRequest/create
 func (s *Server) handleCreatePullRequestRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -130,7 +130,7 @@ func (s *Server) handleCreatePullRequestRequest(args [0]string, argsEscaped bool
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    CreatePullRequestOperation,
-			OperationSummary: "Создать PR и автоматически назначить до 2 ревьюверов из команды автора",
+			OperationSummary: "Создать PR и автоматически назначить до 2 ревьюеров из команды автора",
 			OperationID:      "CreatePullRequest",
 			Body:             request,
 			RawBody:          rawBody,
@@ -495,7 +495,8 @@ func (s *Server) handleGetTeamRequest(args [0]string, argsEscaped bool, w http.R
 
 // handleGetUserReviewsRequest handles GetUserReviews operation.
 //
-// Получить PR'ы, где пользователь назначен ревьювером.
+// Получить список всех PR, где пользователь назначен
+// ревьюером.
 //
 // GET /users/getReview
 func (s *Server) handleGetUserReviewsRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -528,7 +529,7 @@ func (s *Server) handleGetUserReviewsRequest(args [0]string, argsEscaped bool, w
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    GetUserReviewsOperation,
-			OperationSummary: "Получить PR'ы, где пользователь назначен ревьювером",
+			OperationSummary: "Получить список всех PR, где пользователь назначен ревьюером",
 			OperationID:      "GetUserReviews",
 			Body:             nil,
 			RawBody:          rawBody,
@@ -663,8 +664,8 @@ func (s *Server) handleMergePullRequestRequest(args [0]string, argsEscaped bool,
 
 // handleReassignReviewerRequest handles ReassignReviewer operation.
 //
-// Переназначить конкретного ревьювера на другого из
-// его команды.
+// Переназначить конкретного ревьюера на другого из его
+// команды.
 //
 // POST /pullRequest/reassign
 func (s *Server) handleReassignReviewerRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
@@ -702,7 +703,7 @@ func (s *Server) handleReassignReviewerRequest(args [0]string, argsEscaped bool,
 		mreq := middleware.Request{
 			Context:          ctx,
 			OperationName:    ReassignReviewerOperation,
-			OperationSummary: "Переназначить конкретного ревьювера на другого из его команды",
+			OperationSummary: "Переназначить конкретного ревьюера на другого из его команды",
 			OperationID:      "ReassignReviewer",
 			Body:             request,
 			RawBody:          rawBody,

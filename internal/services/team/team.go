@@ -5,9 +5,11 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/google/uuid"
 	"github.com/ocenb/pr-assignment/internal/api"
 	"github.com/ocenb/pr-assignment/internal/errs"
 	"github.com/ocenb/pr-assignment/internal/logattr"
+	"github.com/ocenb/pr-assignment/internal/repos/pr"
 	"github.com/ocenb/pr-assignment/internal/storage/transactor"
 )
 
@@ -18,6 +20,9 @@ type TeamRepo interface {
 }
 
 type PRRepo interface {
+	AddReviewers(ctx context.Context, items []pr.ReviewerAssignment) error
+	RemoveReviewerFromOpenPRs(ctx context.Context, userID uuid.UUID) error
+	GetReassignmentCandidatesForReviewer(ctx context.Context, userID uuid.UUID) ([]pr.ReviewerAssignment, error)
 	RemoveTeamReviewersFromOpenPRs(ctx context.Context, teamName string) (int64, error)
 }
 
@@ -67,7 +72,33 @@ func (s *Service) Create(ctx context.Context, req *api.Team) (api.CreateTeamRes,
 	log := s.log.With(logattr.Op("TeamService.Create"), slog.String("team_name", string(req.TeamName)))
 
 	if err := s.tm.Run(ctx, func(ctxTX context.Context) error {
-		return s.teamRepo.Create(ctxTX, req)
+
+		var replacements []pr.ReviewerAssignment
+
+		for _, member := range req.Members {
+			candidates, err := s.prRepo.GetReassignmentCandidatesForReviewer(ctxTX, member.UserID)
+			if err != nil {
+				return err
+			}
+
+			if len(candidates) > 0 {
+				replacements = append(replacements, candidates...)
+
+				if err := s.prRepo.RemoveReviewerFromOpenPRs(ctxTX, member.UserID); err != nil {
+					return err
+				}
+			}
+		}
+
+		if err := s.teamRepo.Create(ctxTX, req); err != nil {
+			return err
+		}
+
+		if err := s.prRepo.AddReviewers(ctxTX, replacements); err != nil {
+			return err
+		}
+
+		return nil
 	}); err != nil {
 		if errors.Is(err, errs.ErrTeamAlreadyExists) {
 			return &api.CreateTeamConflict{

@@ -19,9 +19,9 @@ type UserRepo interface {
 }
 
 type PRRepo interface {
-	AddReviewer(ctx context.Context, prID, userID uuid.UUID) error
+	AddReviewers(ctx context.Context, items []pr.ReviewerAssignment) error
 	RemoveReviewerFromOpenPRs(ctx context.Context, userID uuid.UUID) error
-	GetReassignmentCandidatesForReviewer(ctx context.Context, userID uuid.UUID) ([]pr.ReviewerReassignment, error)
+	GetReassignmentCandidatesForReviewer(ctx context.Context, userID uuid.UUID) ([]pr.ReviewerAssignment, error)
 }
 
 type Service struct {
@@ -95,10 +95,8 @@ func (s *Service) SetActive(ctx context.Context, req *api.SetUserActiveReq) (api
 				return err
 			}
 
-			for _, r := range reassignments {
-				if err := s.prRepo.AddReviewer(ctxTX, r.PRID, r.CandidateID); err != nil {
-					return err
-				}
+			if err := s.prRepo.AddReviewers(ctxTX, reassignments); err != nil {
+				return err
 			}
 		}
 

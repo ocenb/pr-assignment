@@ -1,11 +1,13 @@
+name: pr-assignment-test
+
 services:
-  app_test:
+  app-test:
     build: .
-    container_name: pr-assignment-app-test
+    container_name: pr-assignment-test-app
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
     depends_on:
-      postgres_test:
+      postgres-test:
         condition: service_healthy
     env_file:
       - .env.test
@@ -16,12 +18,10 @@ services:
       timeout: 2s
       retries: 3
       start_period: 2s
-    networks:
-      - test
 
-  postgres_test:
+  postgres-test:
     image: postgres:18.1-alpine3.22
-    container_name: pr-assignment-db-test
+    container_name: pr-assignment-test-db
     env_file:
       - .env.test
     volumes:
@@ -32,9 +32,3 @@ services:
       timeout: 2s
       retries: 5
       start_period: 2s
-    networks:
-      - test
-
-networks:
-  test:
-    driver: bridge

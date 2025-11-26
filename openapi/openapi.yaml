@@ -114,7 +114,7 @@ components:
           items:
             type: string
             format: uuid
-          description: user_id назначенных ревьюверов (0..2)
+          description: user_id назначенных ревьюеров (0..2)
         createdAt:
           type: string
           format: date-time
@@ -330,7 +330,7 @@ paths:
     post:
       tags: [PullRequests]
       operationId: CreatePullRequest
-      summary: Создать PR и автоматически назначить до 2 ревьюверов из команды автора
+      summary: Создать PR и автоматически назначить до 2 ревьюеров из команды автора
       requestBody:
         required: true
         content:
@@ -441,7 +441,7 @@ paths:
     post:
       tags: [PullRequests]
       operationId: ReassignReviewer
-      summary: Переназначить конкретного ревьювера на другого из его команды
+      summary: Переназначить конкретного ревьюера на другого из его команды
       requestBody:
         required: true
         content:
@@ -469,7 +469,7 @@ paths:
                   replaced_by:
                     type: string
                     format: uuid
-                    description: user_id нового ревьювера
+                    description: user_id нового ревьюера
               example:
                 pr:
                   pull_request_id: 770e8400-e29b-41d4-a716-446655440002
@@ -500,7 +500,7 @@ paths:
                     error:
                       { code: PR_MERGED, message: cannot reassign on merged PR }
                 notAssigned:
-                  summary: Пользователь не был назначен ревьювером
+                  summary: Пользователь не был назначен ревьюером
                   value:
                     error:
                       {
@@ -525,12 +525,12 @@ paths:
     get:
       tags: [Users]
       operationId: GetUserReviews
-      summary: Получить PR'ы, где пользователь назначен ревьювером
+      summary: Получить список всех PR, где пользователь назначен ревьюером
       parameters:
         - $ref: "#/components/parameters/UserIdQuery"
       responses:
         "200":
-          description: Список PR'ов пользователя
+          description: Список всех PR пользователя
           content:
             application/json:
               schema:
@@ -645,7 +645,7 @@ paths:
                     description: Количество деактивированных пользователей
                   removed_count:
                     type: integer
-                    description: Количество удаленных ревьюверов из открытых PR
+                    description: Количество удаленных ревьюеров из открытых PR
               example:
                 deactivated_count: 5
                 removed_count: 3

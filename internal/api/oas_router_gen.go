@@ -445,7 +445,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "POST":
 							r.name = CreatePullRequestOperation
-							r.summary = "Создать PR и автоматически назначить до 2 ревьюверов из команды автора"
+							r.summary = "Создать PR и автоматически назначить до 2 ревьюеров из команды автора"
 							r.operationID = "CreatePullRequest"
 							r.pathPattern = "/pullRequest/create"
 							r.args = args
@@ -493,7 +493,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "POST":
 							r.name = ReassignReviewerOperation
-							r.summary = "Переназначить конкретного ревьювера на другого из его команды"
+							r.summary = "Переназначить конкретного ревьюера на другого из его команды"
 							r.operationID = "ReassignReviewer"
 							r.pathPattern = "/pullRequest/reassign"
 							r.args = args
@@ -641,7 +641,7 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						switch method {
 						case "GET":
 							r.name = GetUserReviewsOperation
-							r.summary = "Получить PR'ы, где пользователь назначен ревьювером"
+							r.summary = "Получить список всех PR, где пользователь назначен ревьюером"
 							r.operationID = "GetUserReviews"
 							r.pathPattern = "/users/getReview"
 							r.args = args

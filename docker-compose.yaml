@@ -24,7 +24,7 @@ services:
     env_file:
       - .env
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
       - ./deployments/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
@@ -35,4 +35,4 @@ services:
       start_period: 5s
 
 volumes:
-  postgres_data:
+  postgres-data:

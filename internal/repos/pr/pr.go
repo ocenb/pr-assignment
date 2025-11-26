@@ -14,7 +14,7 @@ import (
 	"github.com/ocenb/pr-assignment/internal/storage/transactor"
 )
 
-type ReviewerReassignment struct {
+type ReviewerAssignment struct {
 	PRID        uuid.UUID
 	CandidateID uuid.UUID
 }
@@ -48,10 +48,16 @@ func (r *Repo) Create(ctx context.Context, pr *api.CreatePullRequestReq, reviewe
 	}
 
 	if len(reviewers) > 0 {
-		for _, reviewerID := range reviewers {
-			if err := r.AddReviewer(ctx, pr.PullRequestID, reviewerID); err != nil {
-				return nil, err
+		assignments := make([]ReviewerAssignment, len(reviewers))
+		for i, reviewerID := range reviewers {
+			assignments[i] = ReviewerAssignment{
+				PRID:        pr.PullRequestID,
+				CandidateID: reviewerID,
 			}
+		}
+
+		if err := r.AddReviewers(ctx, assignments); err != nil {
+			return nil, err
 		}
 	}
 
@@ -283,20 +289,33 @@ func (r *Repo) ReassignReviewer(ctx context.Context, prID, oldReviewerID uuid.UU
 	return *newReviewerID, nil
 }
 
-func (r *Repo) AddReviewer(ctx context.Context, prID, userID uuid.UUID) error {
+func (r *Repo) AddReviewers(ctx context.Context, items []ReviewerAssignment) error {
+	if len(items) == 0 {
+		return nil
+	}
+
 	q := r.tm.GetQueryEngine(ctx)
 
-	query := `
-		INSERT INTO reviewers (pull_request_id, user_id)
-		SELECT $1, $2
-		FROM users u
-		WHERE u.id = $2 AND u.is_active = true
-		ON CONFLICT (pull_request_id, user_id) DO NOTHING
-	`
+	prIDs := make([]uuid.UUID, 0, len(items))
+	userIDs := make([]uuid.UUID, 0, len(items))
 
-	_, err := q.Exec(ctx, query, prID, userID)
+	for _, item := range items {
+		prIDs = append(prIDs, item.PRID)
+		userIDs = append(userIDs, item.CandidateID)
+	}
+
+	query := `
+        INSERT INTO reviewers (pull_request_id, user_id)
+        SELECT t.pr_id, t.u_id
+        FROM unnest($1::uuid[], $2::uuid[]) AS t(pr_id, u_id)
+        JOIN users u ON u.id = t.u_id
+        WHERE u.is_active = true
+        ON CONFLICT (pull_request_id, user_id) DO NOTHING
+    `
+
+	_, err := q.Exec(ctx, query, prIDs, userIDs)
 	if err != nil {
-		return fmt.Errorf("failed to add reviewer: %w", err)
+		return fmt.Errorf("failed to add reviewers: %w", err)
 	}
 
 	return nil
@@ -321,7 +340,7 @@ func (r *Repo) RemoveReviewerFromOpenPRs(ctx context.Context, userID uuid.UUID) 
 	return nil
 }
 
-func (r *Repo) GetReassignmentCandidatesForReviewer(ctx context.Context, userID uuid.UUID) ([]ReviewerReassignment, error) {
+func (r *Repo) GetReassignmentCandidatesForReviewer(ctx context.Context, userID uuid.UUID) ([]ReviewerAssignment, error) {
 	q := r.tm.GetQueryEngine(ctx)
 
 	query := `
@@ -357,9 +376,9 @@ func (r *Repo) GetReassignmentCandidatesForReviewer(ctx context.Context, userID 
 	}
 	defer rows.Close()
 
-	var result []ReviewerReassignment
+	var result []ReviewerAssignment
 	for rows.Next() {
-		var item ReviewerReassignment
+		var item ReviewerAssignment
 		if err := rows.Scan(&item.PRID, &item.CandidateID); err != nil {
 			return nil, fmt.Errorf("failed to scan replacement candidate: %w", err)
 		}

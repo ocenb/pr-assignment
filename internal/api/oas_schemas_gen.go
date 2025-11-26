@@ -137,7 +137,7 @@ func (*DeactivateTeamMembersNotFound) deactivateTeamMembersRes() {}
 type DeactivateTeamMembersOK struct {
 	// Количество деактивированных пользователей.
 	DeactivatedCount int `json:"deactivated_count"`
-	// Количество удаленных ревьюверов из открытых PR.
+	// Количество удаленных ревьюеров из открытых PR.
 	RemovedCount int `json:"removed_count"`
 }
 
@@ -702,7 +702,7 @@ type PullRequest struct {
 	PullRequestName PullRequestName   `json:"pull_request_name"`
 	AuthorID        uuid.UUID         `json:"author_id"`
 	Status          PullRequestStatus `json:"status"`
-	// User_id назначенных ревьюверов (0..2).
+	// User_id назначенных ревьюеров (0..2).
 	AssignedReviewers []uuid.UUID    `json:"assigned_reviewers"`
 	CreatedAt         OptNilDateTime `json:"createdAt"`
 	MergedAt          OptNilDateTime `json:"mergedAt"`
@@ -928,7 +928,7 @@ func (*ReassignReviewerNotFound) reassignReviewerRes() {}
 
 type ReassignReviewerOK struct {
 	Pr PullRequest `json:"pr"`
-	// User_id нового ревьювера.
+	// User_id нового ревьюера.
 	ReplacedBy uuid.UUID `json:"replaced_by"`
 }
 

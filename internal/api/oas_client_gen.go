@@ -28,8 +28,8 @@ type Invoker interface {
 	CheckHealth(ctx context.Context) (CheckHealthRes, error)
 	// CreatePullRequest invokes CreatePullRequest operation.
 	//
-	// Создать PR и автоматически назначить до 2 ревьюверов
-	// из команды автора.
+	// Создать PR и автоматически назначить до 2 ревьюеров из
+	// команды автора.
 	//
 	// POST /pullRequest/create
 	CreatePullRequest(ctx context.Context, request *CreatePullRequestReq) (CreatePullRequestRes, error)
@@ -61,7 +61,8 @@ type Invoker interface {
 	GetTeam(ctx context.Context, params GetTeamParams) (GetTeamRes, error)
 	// GetUserReviews invokes GetUserReviews operation.
 	//
-	// Получить PR'ы, где пользователь назначен ревьювером.
+	// Получить список всех PR, где пользователь назначен
+	// ревьюером.
 	//
 	// GET /users/getReview
 	GetUserReviews(ctx context.Context, params GetUserReviewsParams) (GetUserReviewsRes, error)
@@ -73,8 +74,8 @@ type Invoker interface {
 	MergePullRequest(ctx context.Context, request *MergePullRequestReq) (MergePullRequestRes, error)
 	// ReassignReviewer invokes ReassignReviewer operation.
 	//
-	// Переназначить конкретного ревьювера на другого из
-	// его команды.
+	// Переназначить конкретного ревьюера на другого из его
+	// команды.
 	//
 	// POST /pullRequest/reassign
 	ReassignReviewer(ctx context.Context, request *ReassignReviewerReq) (ReassignReviewerRes, error)
@@ -167,8 +168,8 @@ func (c *Client) sendCheckHealth(ctx context.Context) (res CheckHealthRes, err e
 
 // CreatePullRequest invokes CreatePullRequest operation.
 //
-// Создать PR и автоматически назначить до 2 ревьюверов
-// из команды автора.
+// Создать PR и автоматически назначить до 2 ревьюеров из
+// команды автора.
 //
 // POST /pullRequest/create
 func (c *Client) CreatePullRequest(ctx context.Context, request *CreatePullRequestReq) (CreatePullRequestRes, error) {
@@ -379,7 +380,8 @@ func (c *Client) sendGetTeam(ctx context.Context, params GetTeamParams) (res Get
 
 // GetUserReviews invokes GetUserReviews operation.
 //
-// Получить PR'ы, где пользователь назначен ревьювером.
+// Получить список всех PR, где пользователь назначен
+// ревьюером.
 //
 // GET /users/getReview
 func (c *Client) GetUserReviews(ctx context.Context, params GetUserReviewsParams) (GetUserReviewsRes, error) {
@@ -471,8 +473,8 @@ func (c *Client) sendMergePullRequest(ctx context.Context, request *MergePullReq
 
 // ReassignReviewer invokes ReassignReviewer operation.
 //
-// Переназначить конкретного ревьювера на другого из
-// его команды.
+// Переназначить конкретного ревьюера на другого из его
+// команды.
 //
 // POST /pullRequest/reassign
 func (c *Client) ReassignReviewer(ctx context.Context, request *ReassignReviewerReq) (ReassignReviewerRes, error) {
